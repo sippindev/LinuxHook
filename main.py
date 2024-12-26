@@ -1,6 +1,10 @@
-try: 
+import requests
+import os
+from pystyle import Write, Colorate, Colors, Center
+from threading import Thread
+
+try:
     import requests
-    import json
     import os
     from pystyle import Write, Colorate, Colors, Center
 except ModuleNotFoundError as ModuleError:
@@ -32,22 +36,33 @@ def delete_webhook(hook):
 
 def rename_webhook(hook):
     name = Write.Input('Name >> ', Colors.blue_to_red, interval=0.025)
-    new_name = requests.patch(hook, json={"name": name})
+    requests.patch(hook, json={"name": name})
     print(Colorate.Horizontal(Colors.blue_to_red, "Changed!"))
 
 def spam_webhook(hook):
     print(Colorate.Horizontal(Colors.blue_to_red, "Starting!"))
     amount = int(Write.Input('Amount >> ', Colors.blue_to_red, interval=0.025))
     message = Write.Input('Message >> ', Colors.blue_to_red, interval=0.025)
+    threads_count = int(Write.Input('Threads (Recommended: 5) >> ', Colors.blue_to_red, interval=0.025))
 
-    for _ in range(amount):
-        send = requests.post(hook, json={"content": message})
-        if send.status_code == 200 or send.status_code == 204:
-            print(Colorate.Horizontal(Colors.blue_to_purple, f"[+] Sent: Message"))
-        elif send.status_code == 404:
-            print(Colorate.Horizontal(Colors.red_to_yellow, "[-] URGENT: Webhook Deleted!"))
-        elif send.status_code == 429:
-            print(Colorate.Horizontal(Colors.blue_to_red, "[/] Error: Webhook Ratelimited!"))
+    def send_messages():
+        for _ in range(amount // threads_count):
+            send = requests.post(hook, json={"content": message})
+            if send.status_code == 200 or send.status_code == 204:
+                print(Colorate.Horizontal(Colors.blue_to_purple, f"[+] Sent: Message"))
+            elif send.status_code == 404:
+                print(Colorate.Horizontal(Colors.red_to_yellow, "[-] URGENT: Webhook Deleted!"))
+            elif send.status_code == 429:
+                print(Colorate.Horizontal(Colors.blue_to_red, "[/] Error: Webhook Ratelimited!"))
+
+    threads = []
+    for _ in range(threads_count):
+        thread = Thread(target=send_messages)
+        threads.append(thread)
+        thread.start()
+
+    for thread in threads:
+        thread.join()
 
 def get_webhook_details(hook):
     print(Colorate.Horizontal(Colors.blue_to_red, "Getting details!"))
@@ -61,7 +76,6 @@ def get_webhook_details(hook):
 
 def edit_config(hook):
     hook = Write.Input('New webhook >> ', Colors.blue_to_red, interval=0.025)
-    
 
 def main():
     os.system('cls' if os.name == 'nt' else 'clear')
